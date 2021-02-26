@@ -2433,13 +2433,13 @@ addUser() {
 
 		if [[ ${userNum} == 0 ]]; then
 
-			users=${users}{\"id\":\"${uuid}\",\"flow\":\"xtls-rprx-direct\",\"email\":\"${email}\"}
+			users=${users}{\"id\":\"${uuid}\",\"flow\":\"xtls-rprx-direct\",\"email\":\"${email}\",\"alterId\":1}
 
 			if echo ${currentInstallProtocolType} | grep -q 4; then
 				trojanGoUsers=${trojanGoUsers}\"${uuid}\"
 			fi
 		else
-			users=${users}{\"id\":\"${uuid}\",\"flow\":\"xtls-rprx-direct\",\"email\":\"${email}\"},
+			users=${users}{\"id\":\"${uuid}\",\"flow\":\"xtls-rprx-direct\",\"email\":\"${email}\",\"alterId\":1},
 
 			if echo ${currentInstallProtocolType} | grep -q 4; then
 				trojanGoUsers=${trojanGoUsers}\"${uuid}\",
@@ -2447,38 +2447,43 @@ addUser() {
 		fi
 	done
 
-	# 兼容v2ray-core
+	#	兼容v2ray-core
 	if [[ "${coreInstallType}" == "2" ]]; then
 		#  | sed 's/"flow":"xtls-rprx-direct",/"alterId":1,/g')
-		users="${users//"flow":"xtls-rprx-direct",/"alterId":1,}"
+		users="${users//\"flow\":\"xtls-rprx-direct\"\,/}"
 	fi
 
 	if [[ -n $(echo ${currentInstallProtocolType} | grep 0) ]]; then
-		#  | sed 's/"alterId":1,//g')
-		local vlessUsers="${users/"alterId":1,//}"
+		local vlessUsers="${users//\,\"alterId\":1/}"
+
 		local vlessTcpResult
 		vlessTcpResult=$(jq -r '.inbounds[0].settings.clients += ['${vlessUsers}']' ${configPath}02_VLESS_TCP_inbounds.json)
 		echo "${vlessTcpResult}" | jq . >${configPath}02_VLESS_TCP_inbounds.json
 	fi
 
-	users="${users//"flow":"xtls-rprx-direct",/"alterId":1,}"
+	#	users="${users//"flow":"xtls-rprx-direct",/"alterId":1,}"
 
 	if echo ${currentInstallProtocolType} | grep -q 1; then
-		local vlessUsers="${users//"alterId":1,/}"
+		local vlessUsers="${users//\,\"alterId\":1/}"
+		vlessUsers="${vlessUsers//\"flow\":\"xtls-rprx-direct\"\,/}"
 		local vlessWsResult
 		vlessWsResult=$(jq -r '.inbounds[0].settings.clients += ['${vlessUsers}']' ${configPath}03_VLESS_WS_inbounds.json)
 		echo "${vlessWsResult}" | jq . >${configPath}03_VLESS_WS_inbounds.json
 	fi
 
 	if echo ${currentInstallProtocolType} | grep -q 2; then
+		local vmessUsers="${users//\"flow\":\"xtls-rprx-direct\"\,/}"
+
 		local vmessTcpResult
-		vmessTcpResult=$(jq -r '.inbounds[0].settings.clients += ['${users}']' ${configPath}04_VMess_TCP_inbounds.json)
+		vmessTcpResult=$(jq -r '.inbounds[0].settings.clients += ['${vmessUsers}']' ${configPath}04_VMess_TCP_inbounds.json)
 		echo "${vmessTcpResult}" | jq . >${configPath}04_VMess_TCP_inbounds.json
 	fi
 
 	if echo ${currentInstallProtocolType} | grep -q 3; then
+		local vmessUsers="${users//\"flow\":\"xtls-rprx-direct\"\,/}"
+
 		local vmessWsResult
-		vmessWsResult=$(jq -r '.inbounds[0].settings.clients += ['${users}']' ${configPath}05_VMess_WS_inbounds.json)
+		vmessWsResult=$(jq -r '.inbounds[0].settings.clients += ['${vmessUsers}']' ${configPath}05_VMess_WS_inbounds.json)
 		echo "${vmessWsResult}" | jq . >${configPath}05_VMess_WS_inbounds.json
 	fi
 
@@ -3240,7 +3245,7 @@ menu() {
 	cd "$HOME" || exit
 	echoContent red "\n=============================================================="
 	echoContent green "作者：mack-a"
-	echoContent green "当前版本：v2.3.20"
+	echoContent green "当前版本：v2.3.21"
 	echoContent green "Github：https://github.com/mack-a/v2ray-agent"
 	echoContent green "描述：七合一共存脚本"
 	echoContent red "=============================================================="
