@@ -450,12 +450,12 @@ initTLSNginxConfig() {
 			echoContent yellow "\n ---> 域名：${domain}"
 		else
 			echo
-			echoContent yellow "请输入要配置的域名 例：blog.v2ray-agent.com --->"
+			echoContent yellow "请输入要配置的域名 例：www.v2ray-agent.com --->"
 			read -r -p "域名:" domain
 		fi
 	else
 		echo
-		echoContent yellow "请输入要配置的域名 例：blog.v2ray-agent.com --->"
+		echoContent yellow "请输入要配置的域名 例：www.v2ray-agent.com --->"
 		read -r -p "域名:" domain
 	fi
 
@@ -539,14 +539,15 @@ EOF
 # 检查ip
 checkIP() {
 	echoContent skyBlue " ---> 检查ipv4中"
-	pingIP=$(ping -c 1 -W 1000 ${domain} | sed '2{s/[^(]*(//;s/).*//;q;}' | sed -n '$p')
-	if [[ -z $(echo "${pingIP}" | awk -F "[.]" '{print $4}') ]]; then
+	local pingIP=$(curl -s -H 'accept:application/dns-json' 'https://cloudflare-dns.com/dns-query?name='${domain}'&type=A' | jq -r .Answer[0].data)
+
+	if [[ -z "${pingIP}" ]]; then
 		echoContent skyBlue " ---> 检查ipv6中"
-		pingIP=$(ping6 -c 1 ${domain} | sed '2{s/[^(]*(//;s/).*//;q;}' | sed -n '$p')
+		pingIP=$(curl -s -H 'accept:application/dns-json' 'https://cloudflare-dns.com/dns-query?name='${domain}'&type=AAAA' | jq -r .Answer[0].data)
 		pingIPv6=${pingIP}
 	fi
 
-	if [[ -n "${pingIP}" ]]; then # && [[ `echo ${pingIP}|grep '^\([1-9]\|[1-9][0-9]\|1[0-9][0-9]\|2[0-4][0-9]\|25[0-5]\)\.\([0-9]\|[1-9][0-9]\|1[0-9][0-9]\|2[0-4][0-9]\|25[0-5]\)\.\([0-9]\|[1-9][0-9]\|1[0-9][0-9]\|2[0-4][0-9]\|25[0-5]\)\.\([0-9]\|[1-9][0-9]\|1[0-9][0-9]\|2[0-4][0-9]\|25[0-5]\)$'` ]]
+	if [[ -n "${pingIP}" ]]; then
 		echo
 		read -r -p "当前域名的IP为 [${pingIP}]，是否正确[y/n]？" domainStatus
 		if [[ "${domainStatus}" == "y" ]]; then
@@ -1362,23 +1363,6 @@ initV2RayConfig() {
   }
 }
 EOF
-	# routing
-	cat <<EOF >/etc/v2ray-agent/v2ray/conf/09_routing.json
-{
-    "routing":{
-        "domainStrategy": "AsIs",
-        "rules": [
-          {
-            "type": "field",
-            "protocol": [
-              "bittorrent"
-            ],
-            "outboundTag": "blocked"
-          }
-        ]
-  }
-}
-EOF
 	# outbounds
 	if [[ -n "${pingIPv6}" ]]; then
 		cat <<EOF >/etc/v2ray-agent/v2ray/conf/10_ipv6_outbounds.json
@@ -1666,23 +1650,6 @@ initXrayConfig() {
   }
 }
 EOF
-	# routing
-	cat <<EOF >/etc/v2ray-agent/xray/conf/09_routing.json
-{
-    "routing":{
-        "domainStrategy": "AsIs",
-        "rules": [
-          {
-            "type": "field",
-            "protocol": [
-              "bittorrent"
-            ],
-            "outboundTag": "blocked"
-          }
-        ]
-  }
-}
-EOF
 
 	# outbounds
 	if [[ -n "${pingIPv6}" ]]; then
@@ -1942,12 +1909,12 @@ EOF
 customCDNIP() {
 	echoContent skyBlue "\n进度 $1/${totalProgress} : 添加DNS智能解析"
 	echoContent yellow "\n 移动:104.19.45.117"
-	echoContent yellow " 联通:amp.cloudflare.com"
+	echoContent yellow " 联通:www.cloudflare.com"
 	echoContent yellow " 电信:www.digitalocean.com"
 	echoContent skyBlue "----------------------------"
 	read -r -p '是否使用？[y/n]:' dnsProxy
 	if [[ "${dnsProxy}" == "y" ]]; then
-		add="domain08.qiu4.ml"
+		add="www.cloudflare.com"
 		echoContent green "\n ---> 使用成功"
 	else
 		add="${domain}"
@@ -2262,8 +2229,8 @@ updateV2RayCDN() {
 	if [[ -n ${currentAdd} ]]; then
 		echoContent red "=============================================================="
 		echoContent yellow "1.CNAME www.digitalocean.com"
-		echoContent yellow "2.CNAME amp.cloudflare.com"
-		echoContent yellow "3.CNAME domain08.qiu4.ml"
+		echoContent yellow "2.CNAME www.cloudflare.com"
+		echoContent yellow "3.CNAME www.cloudflare.com"
 		echoContent yellow "4.手动输入"
 		echoContent red "=============================================================="
 		read -r -p "请选择:" selectCDNType
@@ -2272,10 +2239,10 @@ updateV2RayCDN() {
 			setDomain="www.digitalocean.com"
 			;;
 		2)
-			setDomain="amp.cloudflare.com"
+			setDomain="www.cloudflare.com"
 			;;
 		3)
-			setDomain="domain08.qiu4.ml"
+			setDomain="www.cloudflare.com"
 			;;
 		4)
 			read -r -p "请输入想要自定义CDN IP或者域名:" setDomain
@@ -2678,13 +2645,6 @@ ipv6HumanVerification() {
         "rules": [
           {
             "type": "field",
-            "protocol": [
-              "bittorrent"
-            ],
-            "outboundTag": "blocked"
-          },
-          {
-            "type": "field",
             "domain": [
               "domain:google.com",
               "domain:google.com.hk"
@@ -2719,22 +2679,7 @@ EOF
 		echoContent green " ---> 人机验证修改成功"
 
 	elif [[ "${ipv6Status}" == "2" ]]; then
-		cat <<EOF >${configPath}09_routing.json
-{
-    "routing":{
-        "domainStrategy": "AsIs",
-        "rules": [
-          {
-            "type": "field",
-            "protocol": [
-              "bittorrent"
-            ],
-            "outboundTag": "blocked"
-          }
-        ]
-  }
-}
-EOF
+		rm -rf ${configPath}09_routing.json
 
 		cat <<EOF >${configPath}10_ipv4_outbounds.json
 {
@@ -2943,22 +2888,8 @@ EOF
 # 移除任意门解锁Netflix
 removeDokodemoDoorUnblockNetflix() {
 	rm -rf ${configPath}/*_netflix_*.json
-	cat <<EOF >${configPath}/09_routing.json
-{
-    "routing":{
-        "domainStrategy": "AsIs",
-        "rules": [
-          {
-            "type": "field",
-            "protocol": [
-              "bittorrent"
-            ],
-            "outboundTag": "blocked"
-          }
-        ]
-  }
-}
-EOF
+	rm -rf ${configPath}/09_routing.json
+
 	reloadCore
 	echoContent green " ---> 卸载成功"
 }
@@ -3422,7 +3353,7 @@ menu() {
 	cd "$HOME" || exit
 	echoContent red "\n=============================================================="
 	echoContent green "作者：mack-a"
-	echoContent green "当前版本：v2.3.27"
+	echoContent green "当前版本：v2.3.29"
 	echoContent green "Github：https://github.com/mack-a/v2ray-agent"
 	echoContent green "描述：七合一共存脚本"
 	echoContent red "=============================================================="
