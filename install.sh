@@ -273,6 +273,7 @@ echoContent() {
 # 初始化安装目录
 mkdirTools() {
 	mkdir -p /etc/v2ray-agent/tls
+	mkdir -p /etc/v2ray-agent/mtg
 	mkdir -p /etc/v2ray-agent/subscribe
 	mkdir -p /etc/v2ray-agent/subscribe_tmp
 	mkdir -p /etc/v2ray-agent/v2ray/conf
@@ -1303,6 +1304,36 @@ handleXray() {
 	fi
 }
 
+# 操作MTG
+handleMTG() {
+	if [[ -n $(find /bin /usr/bin -name "systemctl") ]] && ls /etc/systemd/system/ | grep -q xray.service; then
+		if [[ -z $(pgrep -f "mtg/mtg") ]] && [[ "$1" == "start" ]]; then
+			systemctl start mtg.service
+		elif [[ -n $(pgrep -f "mtg/mtg") ]] && [[ "$1" == "stop" ]]; then
+			systemctl stop mtg.service
+		fi
+	fi
+
+	sleep 0.5
+
+	if [[ "$1" == "start" ]]; then
+		if [[ -n $(pgrep -f "mtg/mtg") ]]; then
+			echoContent green " ---> mtg启动成功"
+		else
+			echoContent red "mtg启动失败"
+			echoContent red "执行 [ps -ef|grep mtg] 查看日志"
+			exit 0
+		fi
+	elif [[ "$1" == "stop" ]]; then
+		if [[ -z $(pgrep -f "mtg/mtg") ]]; then
+			echoContent green " ---> mtg关闭成功"
+		else
+			echoContent red "mtg关闭失败"
+			echoContent red "请手动执行【ps -ef|grep -v grep|grep mtg|awk '{print \$2}'|xargs kill -9】"
+			exit 0
+		fi
+	fi
+}
 # 操作Trojan-Go
 handleTrojanGo() {
 	if [[ -n $(find /bin /usr/bin -name "systemctl") ]] && ls /etc/systemd/system/ | grep -q trojan-go.service; then
@@ -2190,7 +2221,7 @@ unInstall() {
 	if [[ "${unInstallStatus}" != "y" ]]; then
 		echoContent green " ---> 放弃卸载"
 		menu
-		exit
+		exit 0
 	fi
 
 	handleNginx stop
@@ -2200,8 +2231,14 @@ unInstall() {
 
 	handleV2Ray stop
 	handleTrojanGo stop
+	handleMTG stop
+
 	rm -rf /etc/systemd/system/v2ray.service
 	echoContent green " ---> 删除V2Ray开机自启完成"
+
+	rm -rf /etc/systemd/system/mtg.service
+	echoContent green " ---> 删除MTG开机自启完成"
+
 	rm -rf /etc/systemd/system/trojan-go.service
 	echoContent green " ---> 删除Trojan-Go开机自启完成"
 	rm -rf /tmp/v2ray-agent-tls/*
@@ -2320,7 +2357,7 @@ customUUID() {
 			if [[ -f "/tmp/v2ray-agent" && -n $(cat /tmp/v2ray-agent) ]]; then
 				echoContent red " ---> UUID不可重复"
 				rm /tmp/v2ray-agent
-				exit
+				exit 0
 			fi
 		fi
 	fi
@@ -2345,7 +2382,7 @@ customUserEmail() {
 			if [[ -f "/tmp/v2ray-agent" && -n $(cat /tmp/v2ray-agent) ]]; then
 				echoContent red " ---> email不可重复"
 				rm /tmp/v2ray-agent
-				exit
+				exit 0
 			fi
 		fi
 	fi
@@ -2359,7 +2396,7 @@ addUser() {
 	echo
 	if [[ -z ${userNum} || ${userNum} -le 0 ]]; then
 		echoContent red " ---> 输入有误，请重新输入"
-		exit
+		exit 0
 	fi
 
 	# 生成用户
@@ -2522,8 +2559,8 @@ updateV2RayAgent() {
 # 安装BBR
 bbrInstall() {
 	echoContent red "\n=============================================================="
-	echoContent green "BBR脚本用的[ylx2016]的成熟作品，地址[https://github.com/ylx2016/Linux-NetSpeed]，请熟知"
-	echoContent yellow "1.安装【推荐原版BBR+FQ】"
+	echoContent green "BBR、DD脚本用的[ylx2016]的成熟作品，地址[https://github.com/ylx2016/Linux-NetSpeed]，请熟知"
+	echoContent yellow "1.安装脚本【推荐原版BBR+FQ】"
 	echoContent yellow "2.回退主目录"
 	echoContent red "=============================================================="
 	read -r -p "请选择：" installBBRStatus
@@ -2619,7 +2656,7 @@ checkIPv6() {
 	pingIPv6=$(ping6 -c 1 www.google.com | sed '2{s/[^(]*(//;s/).*//;q;}' | tail -n +2)
 	if [[ -z "${pingIPv6}" ]]; then
 		echoContent red " ---> 不支持ipv6"
-		exit
+		exit 0
 	fi
 }
 
@@ -2628,7 +2665,7 @@ ipv6HumanVerification() {
 	if [[ -z "${configPath}" ]]; then
 		echoContent red " ---> 未安装，请使用脚本安装"
 		menu
-		exit
+		exit 0
 	fi
 
 	checkIPv6
@@ -2698,7 +2735,7 @@ EOF
 	else
 		echoContent red " ---> 选择错误"
 		ipv6HumanVerification
-		exit
+		exit 0
 	fi
 
 	reloadCore
@@ -2808,7 +2845,7 @@ EOF
 		reloadCore
 		echoContent green " ---> 添加Netflix出战解锁成功"
 		echoContent yellow " ---> 不支持trojan的相关节点"
-		exit
+		exit 0
 	fi
 	echoContent red " ---> ip不可为空"
 }
@@ -2879,8 +2916,8 @@ EOF
 EOF
 		reloadCore
 		echoContent green " ---> 添加落地机入站解锁Netflix成功"
-		echoContent yellow " ---> 不支持trojan的相关节点"
-		exit
+		echoContent yellow " ---> trojan的相关节点不支持此操作"
+		exit 0
 	fi
 	echoContent red " ---> ip不可为空"
 }
@@ -2915,23 +2952,23 @@ checkNetflix() {
 	netflixResult=$(curl -s -m 2 https://www.netflix.com | grep "Not Available")
 	if [[ -n ${netflixResult} ]]; then
 		echoContent red " ---> Netflix不可用"
-		exit
+		exit 0
 	fi
 
 	netflixResult=$(curl -s -m 2 https://www.netflix.com | grep "NSEZ-403")
 	if [[ -n ${netflixResult} ]]; then
 		echoContent red " ---> Netflix不可用"
-		exit
+		exit 0
 	fi
 
 	echoContent skyBlue " ---> 检测绝命毒师是否可以播放"
 	result=$(curl -s -m 2 https://www.netflix.com/title/70143836 | grep "page-404")
 	if [[ -n ${result} ]]; then
 		echoContent green " ---> 仅可看自制剧"
-		exit
+		exit 0
 	fi
 	echoContent green " ---> Netflix解锁"
-	exit
+	exit 0
 }
 
 # dns解锁Netflix
@@ -3000,7 +3037,7 @@ EOF
 	else
 		echoContent red " ---> dns不可为空"
 	fi
-	exit
+	exit 0
 }
 
 # 移除Netflix解锁
@@ -3025,7 +3062,7 @@ EOF
 
 	echoContent green " ---> 卸载成功"
 
-	exit
+	exit 0
 }
 
 # v2ray-core个性化安装
@@ -3323,7 +3360,7 @@ manageAccount() {
 # 订阅
 subscribe() {
 	if [[ -n "${configPath}" ]]; then
-		echoContent skyBlue "-------------------------备注----------------------------------"
+		echoContent skyBlue "-------------------------备注---------------------------------"
 		echoContent yellow "# 查看订阅时会重新生成订阅"
 		echoContent yellow "# 每次添加、删除账号需要重新查看订阅"
 		rm -rf /etc/v2ray-agent/subscribe/*
@@ -3348,12 +3385,106 @@ subscribe() {
 	fi
 }
 
+# 安装MT
+setMTG() {
+	echoContent skyBlue "\n功能 1/${totalProgress} : 设置MTPROTO[FAKE TLS]"
+	echoContent skyBlue "-------------------------备注---------------------------------"
+	echoContent yellow "# 使用MTPROTO有被阻断的风险，请熟知其中的风险"
+	echoContent yellow "# 请允许访问8443端口\n"
+	echoContent yellow "1.添加"
+	echoContent yellow "2.卸载"
+	echoContent yellow "3.查看帐号"
+	read -r -p "请选择:" setMTGStatus
+	if [[ "${setMTGStatus}" == "1" ]]; then
+		echoContent skyBlue " ---> 下载MTG"
+		installMTG
+		echoContent skyBlue " ---> 生成 MTPROTO FAKE TLS "
+		initMTGSecret
+		echoContent skyBlue " ---> 安装MTG开机自启"
+		installMTGService
+		handleMTG start
+		showMTGAccount
+	elif [[ "${setMTGStatus}" == "2" ]]; then
+		unInstallMTG
+	elif [[ "${setMTGStatus}" == "3" ]]; then
+		showMTGAccount
+	fi
+	exit 0
+}
+
+# 卸载MTG
+unInstallMTG() {
+	if [[ ! -f "/etc/v2ray-agent/mtg/mtg" ]]; then
+		echoContent red "\n ---> 没有检测到MTG"
+		menu
+		exit 0
+	fi
+	handleMTG stop
+	rm -rf /etc/v2ray-agent/mtg/*
+	rm /etc/systemd/system/mtg.service
+	echoContent green " ---> 卸载完成"
+	exit 0
+}
+
+# 查看MTG帐号信息
+showMTGAccount() {
+	local ip=$(curl -s https://api.ip.sb/ip --ipv4)
+	if [[ -z ${ip} ]]; then
+		ip=$(curl -s ipinfo.io/ip --ipv4)
+		if [[ -z ${ip} ]]; then
+			echoContent red " ---> ip获取失败，请手动输入"
+		fi
+	fi
+	echoContent skyBlue "========================= TG链接 =============================\n"
+	echoContent green "  tg://proxy?server=${ip}&port=8443&secret=$(cat /etc/v2ray-agent/mtg/config)\n"
+	exit 0
+}
+# 安装MTG
+installMTG() {
+	local version=$(curl -s https://github.com/9seconds/mtg/releases | grep /9seconds/mtg/releases/tag/ | head -1 | awk -F '["][>]' '{print $2}' | awk -F '[<]' '{print $1}')
+	if wget --help | grep -q show-progress; then
+		wget -c -q --show-progress -P /etc/v2ray-agent/mtg/ "https://github.com/9seconds/mtg/releases/download/${version}/mtg-linux-amd64"
+	else
+		wget -c -P /etc/v2ray-agent/mtg/ "https://github.com/9seconds/mtg/releases/download/${version}/mtg-linux-amd64" >/dev/null 2>&1
+	fi
+	mv /etc/v2ray-agent/mtg/mtg-linux-amd64 /etc/v2ray-agent/mtg/mtg
+	chmod 655 /etc/v2ray-agent/mtg/mtg
+}
+
+# 安装MTG Service
+installMTGService() {
+
+	cat <<EOF >/etc/systemd/system/mtg.service
+[Unit]
+Description=MTG - Bullshit-free MTPROTO proxy for Telegram
+Documentation=https://github.com/9seconds/mtg
+After=network.target nss-lookup.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/etc/v2ray-agent/mtg/mtg run $(cat /etc/v2ray-agent/mtg/config) --bind 0.0.0.0:8443
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=23
+[Install]
+WantedBy=multi-user.target
+EOF
+	systemctl daemon-reload
+	systemctl enable mtg
+}
+
+# 初始化MTG secret
+initMTGSecret() {
+	/etc/v2ray-agent/mtg/mtg generate-secret -c blog.mmackamtggtm.com tls >/etc/v2ray-agent/mtg/config
+}
+
 # 主菜单
 menu() {
 	cd "$HOME" || exit
 	echoContent red "\n=============================================================="
 	echoContent green "作者：mack-a"
-	echoContent green "当前版本：v2.3.30"
+	echoContent green "当前版本：v2.4.3"
 	echoContent green "Github：https://github.com/mack-a/v2ray-agent"
 	echoContent green "描述：七合一共存脚本"
 	echoContent red "=============================================================="
@@ -3366,14 +3497,15 @@ menu() {
 	echoContent yellow "6.更换CDN节点"
 	echoContent yellow "7.ipv6人机验证"
 	echoContent yellow "8.流媒体工具"
+	echoContent yellow "9.设置MTPROTO"
 	echoContent skyBlue "-------------------------版本管理-----------------------------"
-	echoContent yellow "9.core版本管理"
-	echoContent yellow "10.更新Trojan-Go"
-	echoContent yellow "11.更新脚本"
-	echoContent yellow "12.安装BBR、DD脚本"
+	echoContent yellow "10.core版本管理"
+	echoContent yellow "11.更新Trojan-Go"
+	echoContent yellow "12.更新脚本"
+	echoContent yellow "13.安装BBR、DD脚本"
 	echoContent skyBlue "-------------------------脚本管理-----------------------------"
-	echoContent yellow "13.查看日志"
-	echoContent yellow "14.卸载脚本"
+	echoContent yellow "14.查看日志"
+	echoContent yellow "15.卸载脚本"
 	echoContent red "=============================================================="
 	mkdirTools
 	aliasInstall
@@ -3404,21 +3536,24 @@ menu() {
 		streamingToolbox 1
 		;;
 	9)
-		coreVersionManageMenu 1
+		setMTG 1
 		;;
 	10)
-		updateTrojanGo 1
+		coreVersionManageMenu 1
 		;;
 	11)
-		updateV2RayAgent 1
+		updateTrojanGo 1
 		;;
 	12)
-		bbrInstall
+		updateV2RayAgent 1
 		;;
 	13)
-		checkLog 1
+		bbrInstall
 		;;
 	14)
+		checkLog 1
+		;;
+	15)
 		unInstall 1
 		;;
 	esac

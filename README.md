@@ -10,7 +10,7 @@
 - [流量中转](https://github.com/mack-a/v2ray-agent/blob/master/documents/traffic_relay.md)
 - [手动自建教程](https://github.com/mack-a/v2ray-agent/blob/master/documents/Cloudflare_install_manual.md)
 - [ssh入门教程](https://www.v2ray-agent.com/2020-12-16-ssh%E5%85%A5%E9%97%A8%E6%95%99%E7%A8%8B)
-- [TG群](https://t.me/technologyshare)、[订阅频道-及时获取更新通知](https://t.me/v2rayagentshare)、[博客地址](https://www.v2ray-agent.com/)
+- [TG频道-更新通知](https://t.me/v2rayagentshare)、[博客地址](https://www.v2ray-agent.com/)
 - [公益订阅链接](https://github.com/mack-a/v2ray-agent/blob/master/documents/free_account.md)。
 - **请给个⭐支持一下**
 
@@ -39,6 +39,7 @@
 - 支持Debian、Ubuntu、Centos，支持主流的cpu架构。**不建议使用Centos以及低版本的系统，2.3.x后不再支持Centos6**
 - 支持个性化安装
 - 支持多用户管理
+- **支持MTPROTO[FAKE TLS]，此协议有被阻断的风险，谨慎使用**
 - 支持Netflix检测、支持DNS流媒体解锁、支持任意门解锁Netflix
 - 无需卸载即可安装、重装任意组合
 - 支持卸载时保留Nginx、tls证书。如果acme.sh申请的证书有效的情况下，不会重新签发。
