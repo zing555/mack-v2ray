@@ -27,7 +27,7 @@
 
 * * *
 
-# 1.七合一共存脚本+伪装站点
+# 1.八合一共存脚本+伪装站点
 
 - [Cloudflare入门教程](https://github.com/mack-a/v2ray-agent/blob/master/documents/cloudflare_init.md)
 
@@ -52,6 +52,7 @@
 
 - VLESS+TCP+TLS
 - VLESS+TCP+xtls-rprx-direct【**推荐**】
+- VLESS+gRPC+TLS【支持CDN、IPv6】
 - VLESS+WS+TLS【支持CDN、IPv6】
 - VMess+TCP+TLS
 - VMess+WS+TLS【支持CDN、IPv6】
